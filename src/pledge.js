@@ -10,11 +10,13 @@ const $Promise = function (executor) {
   }
   this._state = "pending";
   this._value = undefined;
+  this._handlerGroups = [];
+
   const resolve = function (value) {
-    this._internalResolve(value)
+    this._internalResolve(value);
   };
   const reject = function (value) {
-    this._internalReject(value)
+    this._internalReject(value);
   };
   executor(resolve.bind(this), reject.bind(this));
 };
@@ -30,6 +32,15 @@ $Promise.prototype._internalResolve = function (value) {
     this._state = "fulfilled";
     return (this._value = value);
   }
+};
+
+$Promise.prototype.then = function (successCb, errorCb) {
+  const handlerGroup = {};
+  if (typeof successCb !== "function") successCb = false;
+  if (typeof errorCb !== "function") errorCb = false;
+  handlerGroup.successCb = successCb;
+  handlerGroup.errorCb = errorCb;
+  return this._handlerGroups.push(handlerGroup);
 };
 
 module.exports = $Promise;

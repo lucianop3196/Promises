@@ -40,7 +40,7 @@ describe("El método .then de una promesa", function(){
     e2 = function (/* reason */) { /* handle reason */ };
   });
 
-  xit('agrega grupos de handlers (funciones callbacks) a la promesa', function(){
+  it('agrega grupos de handlers (funciones callbacks) a la promesa', function(){
     promise.then( s1, e1 );
     expect( promise._handlerGroups[0].successCb ).toBe( s1 );
     expect( promise._handlerGroups[0].errorCb   ).toBe( e1 );
@@ -50,7 +50,7 @@ describe("El método .then de una promesa", function(){
   // el cual no es lo mismo que "chaining". Vamos a ver promise
   // chaining en el Cap. 4.
 
-  xit('puede ser llamado multiples veces para añadir mas handlers', function(){
+  it('puede ser llamado multiples veces para añadir mas handlers', function(){
     promise.then( s1, e1 );
     expect( promise._handlerGroups[0].successCb ).toBe( s1 );
     expect( promise._handlerGroups[0].errorCb   ).toBe( e1 );
@@ -59,7 +59,7 @@ describe("El método .then de una promesa", function(){
     expect( promise._handlerGroups[1].errorCb   ).toBe( e2 );
   });
 
-  xit('agrega un valor falso en lugar de callbacks que no son funciones en el success o error', function(){
+  it('agrega un valor falso en lugar de callbacks que no son funciones en el success o error', function(){
     promise.then( 'a string', {} );
     expect( promise._handlerGroups[0].successCb ).toBeFalsy();
     expect( promise._handlerGroups[0].errorCb   ).toBeFalsy();
