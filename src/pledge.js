@@ -23,10 +23,10 @@ const $Promise = function (executor) {
 };
 
 //Función que rechaza la promesa original y llama a ._callHandlers() para resolver los then.
-$Promise.prototype._internalReject = function (razon) {
+$Promise.prototype._internalReject = function (reason) {
   if (this._state === "pending") {
     this._state = "rejected";
-    this._value = razon;
+    this._value = reason;
     this._callHandlers();
   }
 };
@@ -40,28 +40,62 @@ $Promise.prototype._internalResolve = function (value) {
   }
 };
 
-//Función que resuelve los handlers acumulados en la cola (_handleGroup) siempre con el mismo this._value, ya que los then no estan encadenados
+//Función que resuelve los handlers y nuevas promesas acumulados en la cola (_handleGroup) siempre con el mismo this._value, ya que los then no estan encadenados
 $Promise.prototype._callHandlers = function () {
   while (this._handlerGroups.length > 0) {
     let current = this._handlerGroups.shift();
     if (this._state === "fulfilled") {
-      current.successCb && current.successCb(this._value);
+      if (!current.successCb) {
+        current.downstreamPromise._internalResolve(this._value);
+      } else {
+        try {
+          const result = current.successCb(this._value);
+          if (result instanceof $Promise) {
+            result.then(
+              (value) => current.downstreamPromise._internalResolve(value),
+              (err) => current.downstreamPromise._internalReject(err)
+            );
+          } else {
+            current.downstreamPromise._internalResolve(result);
+          }
+        } catch (e) {
+          current.downstreamPromise._internalReject(e);
+        }
+      }
     } else if (this._state === "rejected") {
-      current.errorCb && current.errorCb(this._value);
+      if (!current.errorCb) {
+        current.downstreamPromise._internalReject(this._value);
+      } else {
+        try {
+          const result = current.errorCb(this._value);
+          if (result instanceof $Promise) {
+            result.then(
+              (value) => current.downstreamPromise._internalResolve(value),
+              (err) => current.downstreamPromise._internalReject(err)
+            );
+          } else {
+            current.downstreamPromise._internalResolve(result);
+          }
+        } catch (e) {
+          current.downstreamPromise._internalReject(e);
+        }
+      }
     }
   }
 };
 
-//El metodo then me almacena los success y error handlers en una cola llamda _handleGroup
+//El metodo then me almacena los success, error handlers y nuevas promesas en una cola llamda _handleGroup
 $Promise.prototype.then = function (successCb, errorCb) {
   const handlerGroup = {};
   if (typeof successCb !== "function") successCb = false;
   if (typeof errorCb !== "function") errorCb = false;
   handlerGroup.successCb = successCb;
   handlerGroup.errorCb = errorCb;
+  handlerGroup.downstreamPromise = new $Promise(function () {});
   this._handlerGroups.push(handlerGroup);
   //Si la promesa fue resuelta y se ejecuta el metodo then posteriormente, aquí se ejecuta el callhandlers.
   if (this._state !== "pending") this._callHandlers();
+  return handlerGroup.downstreamPromise;
 };
 
 $Promise.prototype.catch = function (errorCb) {
